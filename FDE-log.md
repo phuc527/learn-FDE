@@ -59,13 +59,42 @@ Ticket: "{ticket}"
 
 ## DAY 2 · Trích xuất đơn hàng từ email
 
-_(chưa làm)_
-
 **Tình huống:** email khách hàng chứa thông tin đơn hàng, cần đưa vào hệ thống dưới dạng JSON.
 
 **Prompt sai:** `Lấy thông tin đơn hàng từ email này`
 
 **Vì sao sai:** không nói rõ trường nào cần lấy, không nói khi thiếu thì làm gì. Model có thể tự bịa.
+
+**Prompt đúng:** schema cố định, quy tắc `null` khi thiếu, định dạng ngày `YYYY-MM-DD`, số tiền là integer (xem prompt đầy đủ trong bản ghi chạy ngày 2).
+
+### Kết quả (claude.ai)
+
+| Email | JSON hợp lệ | Không bịa trường | Đúng số tiền | Đúng item và số lượng |
+|---|---|---|---|---|
+| A (đủ thông tin) | Có | Có | Có | Có |
+| B (thiếu thông tin) | Có | Có | — | — |
+| C (2 đơn, lộn xộn) | Có | Có | Không (null, thiếu 350.000 và 4.200.000) | Một phần (2 item nhưng gộp thành 1 đơn, mất mã 8812 và 8813) |
+
+**Điểm:** email A và B đạt đầy đủ. Email C lỗi cấu trúc: schema chỉ có một object nên model gộp 2 đơn thành 1, mất `order_id` và `total_vnd`.
+
+### Ghi chú cuối ngày
+
+1. **Prompt sai hỏng ở đâu?** Chưa chạy prompt sai trên claude.ai. Dự kiến lỗi là output văn xuôi, không có cấu trúc.
+2. **Model bịa dữ liệu hoặc sai số tiền?** Không bịa ở email A và B. Ở email C, model không bịa nhưng bỏ mất dữ liệu: 2 mã đơn và 2 số tiền.
+3. **Lần sau đổi gì khi gặp nhiều đơn?** Đổi schema thành `{"orders": [{order_id, items, total_vnd}], "customer_name": ...}`. Thêm quy tắc: "mỗi đơn hàng là một phần tử trong orders, không gộp". Cần thêm ví dụ email nhiều đơn vào prompt.
+
+### Chạy lại email C với schema `orders` (claude.ai)
+
+| Kiểm tra | Kết quả |
+|---|---|
+| Tách đúng 2 đơn | Có (8812, 8813) |
+| Item và số lượng từng đơn | Đúng (chuột x1; màn hình x1) |
+| total_vnd là integer | Đúng (350000; 4200000) |
+| customer_name | Đúng ("Trần Hải") |
+
+**Kết luận:** đạt. Lỗi của email C nằm ở schema một đơn, không phải ở model. Sau khi đổi sang mảng `orders`, model trích xuất đúng cả 2 đơn.
+
+**Bài học FDE:** khi dữ liệu đầu vào có thể có nhiều bản ghi, schema phải là mảng ngay từ đầu. Đừng thiết kế schema cho trường hợp đẹp nhất.
 
 ---
 
