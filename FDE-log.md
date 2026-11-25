@@ -4,24 +4,18 @@ Nhật ký học FDE hằng ngày. Mỗi ngày một mục, cùng format.
 
 ---
 
-## DAY 1 · Prompt phân loại ticket CSKH
+## DAY 1 · Phân loại ticket CSKH
 
 **Tình huống:** team CSKH nhận hàng trăm ticket mỗi ngày, cần gán nhóm và độ khẩn cấp tự động.
 
-**Công cụ:** claude.ai (chat mới cho mỗi lần thử)
-
-**Thời lượng:** 60–90 phút
-
-### 1. Prompt sai
-
+**Prompt sai:**
 ```
 Phân loại ticket này: "Tôi bị trừ tiền 2 lần cho đơn #8812, làm ơn xử lý gấp"
 ```
 
-**Output thực tế:** _(điền)_
+**Vì sao sai:** không có schema nên output là văn xuôi, không parse được. Không định nghĩa nhóm hợp lệ, model có thể tự tạo nhóm mới.
 
-### 2. Prompt đã sửa
-
+**Prompt đúng:**
 ```
 Bạn là hệ thống phân loại ticket. Chỉ trả về JSON đúng schema, không giải thích.
 Schema: {"category": "billing|bug|shipping|other", "urgent": true|false}
@@ -34,37 +28,53 @@ Ví dụ:
 Ticket: "{ticket}"
 ```
 
-### 3. Test 10 ticket khó
+**Lưu ý:** luôn định nghĩa giá trị hợp lệ cho từng trường. Nếu không, model tự đặt tên nhóm mới.
 
-| # | Ticket | Nhãn đúng | JSON hợp lệ | Category đúng | Urgent đúng |
-|---|---|---|---|---|---|
-| 1 | Đặt hàng rồi mà app báo lỗi, tiền vẫn bị trừ | billing, true | | | |
-| 2 | Đơn chưa tới, mà hôm qua shop nói đã giao | shipping, true | | | |
-| 3 | Nút thanh toán không bấm được | bug, true | | | |
-| 4 | cho hỏi phí ship về Đà Nẵng bao nhiêu | shipping, false | | | |
-| 5 | Tôi muốn hủy đơn | other, false | | | |
-| 6 | app hay bị đơ, lúc nào cũng vậy | bug, false | | | |
-| 7 | Tài khoản bị khóa, không đăng nhập được, gấp quá | other, true | | | |
-| 8 | Mã giảm giá không dùng được | billing, false | | | |
-| 9 | Hàng bị hư, muốn đổi trả | shipping, false | | | |
-| 10 | Cảm ơn shop, hàng rất ổn | other, false | | | |
+**Kiểm tra:** chạy 10 ticket, đếm JSON hợp lệ, category đúng, urgent đúng.
 
-### 4. Kết quả
+### Kết quả (chạy trên claude.ai, mỗi ticket một chat mới)
 
-- JSON hợp lệ: ___/10
-- Category đúng: ___/10
-- Urgent đúng: ___/10
+| # | Ticket | Nhãn đúng | Output | JSON hợp lệ | Category đúng | Urgent đúng |
+|---|---|---|---|---|---|---|
+| 1 | Đặt hàng rồi mà app báo lỗi, tiền vẫn bị trừ | billing, true | billing, true | Có | Có | Có |
+| 2 | Đơn chưa tới, mà hôm qua shop nói đã giao | shipping, true | shipping, false | Có | Có | Không |
+| 3 | Nút thanh toán không bấm được | bug, true | bug, true | Có | Có | Có |
+| 4 | cho hỏi phí ship về Đà Nẵng bao nhiêu | shipping, false | shipping, false | Có | Có | Có |
+| 5 | Tôi muốn hủy đơn | other, false | other, false | Có | Có | Có |
+| 6 | app hay bị đơ, lúc nào cũng vậy | bug, false | bug, false | Có | Có | Có |
+| 7 | Tài khoản bị khóa, không đăng nhập được, gấp quá | other, true | other, true | Có | Có | Có |
+| 8 | Mã giảm giá không dùng được | billing, false | billing, false | Có | Có | Có |
+| 9 | Hàng bị hư, muốn đổi trả | shipping, false | shipping, false | Có | Có | Có |
+| 10 | Cảm ơn shop, hàng rất ổn | other, false | other, false | Có | Có | Có |
 
-### 5. Ghi chú cuối ngày
+**Điểm:** JSON hợp lệ 10/10 · Category đúng 10/10 · Urgent đúng 9/10 · Mục tiêu (≥ 9/10 JSON hợp lệ) đạt.
 
-1. Prompt sai hỏng ở đâu?
-2. Prompt đã sửa còn lỗi gì? Ticket nào sai?
-3. Lần sau sẽ đổi gì trong prompt?
+### Ghi chú cuối ngày
 
-**Mục tiêu:** JSON hợp lệ ≥ 9/10, có ít nhất 1 ticket sai và giải thích được vì sao.
+1. **Prompt sai hỏng ở đâu?** Chưa chạy prompt sai trên claude.ai, nên chưa có output thật để so sánh. Lỗi dự kiến là văn xuôi, không parse được.
+2. **Prompt đúng còn lỗi gì?** Ticket 2 ("đơn chưa tới, hôm qua shop nói đã giao") bị gán urgent=false, nhãn đúng là true. Có thể model coi đây là câu hỏi thường, không phải sự cố cần xử lý gấp. Lần sau nên thêm ví dụ kiểu "đơn chưa nhận được, khách đang bực" có urgent=true.
+3. **Lần sau đổi gì?** Định nghĩa rõ urgent là "cần xử lý trong ngày" và thêm 1 ví dụ shipping với urgent=true để model không mặc định urgent=false cho mọi câu hỏi về giao hàng.
 
 ---
 
-## DAY 2
+## DAY 2 · Trích xuất đơn hàng từ email
 
 _(chưa làm)_
+
+**Tình huống:** email khách hàng chứa thông tin đơn hàng, cần đưa vào hệ thống dưới dạng JSON.
+
+**Prompt sai:** `Lấy thông tin đơn hàng từ email này`
+
+**Vì sao sai:** không nói rõ trường nào cần lấy, không nói khi thiếu thì làm gì. Model có thể tự bịa.
+
+---
+
+## DAY 3 · Trả lời khách từ chính sách
+
+_(chưa làm)_
+
+**Tình huống:** khách hỏi về đổi trả, cần trả lời dựa trên chính sách nội bộ.
+
+**Prompt sai:** `Trả lời khách hàng hỏi về đổi trả`, kèm chính sách.
+
+**Vì sao sai:** không ràng buộc phạm vi trả lời, không yêu cầu nói "không biết" khi thiếu thông tin.
